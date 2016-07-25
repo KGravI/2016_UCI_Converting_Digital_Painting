@@ -5,6 +5,7 @@
 #include <locale>
 
 #include "Object.h"
+float distanceOfMouse(float mouseX, float mouseY, float x, float y);
 Group::Group(const std::string& name)
 {
   m_name = name;
@@ -41,9 +42,10 @@ Material::Material(const std::string& name,
 void Object::draw(int loc_a_vertex, int loc_a_normal,
 	int loc_u_material_ambient, int loc_u_material_diffuse,
 	int loc_u_material_specular, int loc_u_material_shininess, bool mouseClick, glm::vec3 mousePoints,
-	int loc_a_color, glm::mat4 mat_PVM)
+	int loc_a_color, glm::mat4 mat_PVM, float loc_brush_size)
 {  
-  for (size_t i=0; i<m_groups.size(); ++i)
+
+  for (int i=0; i<m_groups.size(); ++i)
   {
     Group& group = m_groups[i];
 
@@ -58,18 +60,18 @@ void Object::draw(int loc_a_vertex, int loc_a_normal,
 
 	if (mouseClick)
 	{
-		paintColorVertex(mousePoints, mat_PVM);
+		paintColorVertex(mousePoints, mat_PVM, i, loc_brush_size);
 	}
 
     glVertexAttribPointer(loc_a_normal, 3, GL_FLOAT, false, 0, group.m_normals.data());
     glVertexAttribPointer(loc_a_vertex, 3, GL_FLOAT, false, 0, group.m_vertices.data());
 	glVertexAttribPointer(loc_a_color, 3, GL_FLOAT, false, 0, group.m_colors.data());
 
-     glUniform4f(loc_u_material_ambient, ambient.r, ambient.g, ambient.b, 1.0f);
-   glUniform4f(loc_u_material_diffuse, diffuse.r, diffuse.g, diffuse.b, 1.0f);
+    glUniform4f(loc_u_material_ambient, ambient.r, ambient.g, ambient.b, 1.0f);
+    glUniform4f(loc_u_material_diffuse, diffuse.r, diffuse.g, diffuse.b, 1.0f);
    
-   glUniform4f(loc_u_material_specular, 0.3f, 0.3f, 0.3f, 1.0f);
-   glUniform1f(loc_u_material_shininess, shininess);
+    glUniform4f(loc_u_material_specular, 0.3f, 0.3f, 0.3f, 1.0f);
+    glUniform1f(loc_u_material_shininess, shininess);
 
     glEnableVertexAttribArray(loc_a_vertex);
 	glEnableVertexAttribArray(loc_a_normal);
@@ -77,34 +79,39 @@ void Object::draw(int loc_a_vertex, int loc_a_normal,
 
     glDrawArrays(GL_TRIANGLES, 0, group.m_vertices.size());
 
-    glDisableVertexAttribArray(loc_a_vertex);
+   
+	glDisableVertexAttribArray(loc_a_vertex);
 	glDisableVertexAttribArray(loc_a_normal);
 	glDisableVertexAttribArray(loc_a_color);
   }
 }
 
-void  Object::paintColorVertex(glm::vec3 mousePoints, glm::mat4 mat_PVM)
+void  Object::paintColorVertex(glm::vec3 mousePoints, glm::mat4 mat_PVM, int i,float loc_brush_size)
 {
-	// 마우스 포지션에 겹치는 버텍스의 m_colors값을 1.0 0 0 으로 변환한다.
 
-	for (size_t i = 0; i<m_groups.size(); ++i)
+	//std::cout << m_groups.size() << std::endl;
+	Group& group = m_groups[i];
+	for (int j = 0; j < group.m_vertices.size(); j++)
 	{
-		Group& group = m_groups[i];
-		for (int j = 0; j < group.m_vertices.size(); j++)
+		glm::vec4 gl_Position = mat_PVM * glm::vec4(group.m_vertices[j],1.0f);
+		//std::cout<<gl_Position.w<<std::endl;
+		
+		if (distanceOfMouse(mousePoints.x, mousePoints.y, gl_Position.x / gl_Position.a, gl_Position.y / gl_Position.a) < loc_brush_size)
 		{
-			glm::vec4 gl_Position = mat_PVM * glm::vec4(group.m_vertices[j],1.0f);
+			group.m_colors[j] = glm::vec3(0.0f, 0.0f, 1.0f);
 
-			float x_ogl = (gl_Position.x - 640 / 8) / 640;
-			float y_ogl = (gl_Position.y - 640 / 8) / 640;
-
-
-			if (mousePoints.x - x_ogl >= -0.01f && mousePoints.x - x_ogl <= 0.01f &&
-				mousePoints.y - y_ogl >= -0.01f && mousePoints.y - y_ogl <= 0.01f ) group.m_colors[j] = glm::vec3(1.0f, 0.0f, 0.0f);
-			// 바운더리에 마우스가 들어오면 색상 변경
+			//std::cout << "gl_Position x: " << gl_Position.x << " gl_Position y: " << gl_Position.y << std::endl;
+			//std::cout << "x_ogl : " << x_ogl << " y_ogl : " << y_ogl << std::endl;
+			//std::cout << " gl_x " << gl_Position.x / gl_Position.a << " gl_y " << gl_Position.y / gl_Position.a << " gl_z : " << 1/gl_Position.z<< " " << gl_Position.a << std::endl;
 
 		}
 	}
+}
 
+
+float distanceOfMouse(float mouseX, float mouseY, float x, float y)
+{
+	return sqrt((mouseX - x)*(mouseX - x) + (mouseY - y)*(mouseY - y));
 }
 
 bool Object::load_simple_obj(const std::string& filename)

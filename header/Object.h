@@ -44,12 +44,13 @@ public:
 
 	void draw(int loc_a_vertex, int loc_a_normal,
 		int loc_u_material_ambient, int loc_u_material_diffuse,
-		int loc_u_material_specular, int loc_u_material_shininess, bool mouseClick, glm::vec3 mousePoints, int loc_a_color, glm::mat4 mat_PVM);
+		int loc_u_material_specular, int loc_u_material_shininess,
+		bool mouseClick, glm::vec3 mousePoints, int loc_a_color, glm::mat4 mat_PVM,float loc_brush_size);
 	void print();
 
 	bool load_simple_obj(const std::string& filename);
 	bool load_simple_mtl(const std::string& filename);
-	void paintColorVertex(glm::vec3 mousePoints , glm::mat4 mat_PVM);
+	void paintColorVertex(glm::vec3 mousePoints , glm::mat4 mat_PVM,int i, float loc_brush_size);
 
 private:
 	std::string PATH;

@@ -2,15 +2,12 @@
 //
 #include <GL/glew.h>
 #include <GL/freeglut.h>
-
 #include <iostream>
 #include <string>
 #include <fstream>
-
 #include "Object.h"
 #include "Camera.h"
 #include "Shader.h"
-
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
 
@@ -24,7 +21,6 @@ void MyMouseMove(GLint X, GLint Y);
 glm::vec3 GetOGLPos(int x, int y);
 
 GLuint		    program;
-
 GLint			loc_a_vertex;
 GLint			loc_u_pvm_matrix;
 GLint			loc_u_mv_matrix;
@@ -41,6 +37,7 @@ GLint           light_position_handle;
 GLint           light_ambient_handle;
 GLint           light_diffuse_handle;
 GLint           light_specular_handle;
+GLint			brush_size;
 
 GLint TopLeftX, TopLeftY, BottomRightX, BottomRightY; //마우스의 좌표값을 저장하는 변수
 
@@ -49,7 +46,7 @@ glm::mat4 mat_PVM_Fan;
 glm::mat4 mat_PVM_Sofa;
 glm::mat4 mat_PVM_TV;
 glm::mat4 mat_Rotation_Desk;
-glm::mat4   mat_Translation_model, mat_Translation_model;
+glm::mat4 mat_Translation_model;
 glm::mat4 mat_PVM, mat_VM, m;
 glm::mat4   mat_Proj, mat_View, mat_Model;
 glm::mat3 normal_matrix;
@@ -65,6 +62,7 @@ float timeSinceStart = 0.0f;
 float oldTimeSinceStart = 0.0f;
 float rotate_fan_value = 0;
 float light_x = 0.0f, light_y = 0.0f, light_z = 0.0f;
+float loc_brush_size=0.05f;
 static float fan_speed = 0.005f;
 
 bool identify = true;
@@ -82,21 +80,21 @@ int main(int argc, char* argv[])
   glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);  
   glutInitWindowPosition(100, 100);
   glutInitWindowSize(640, 640);  
-  glutCreateWindow("Modeling & Navigating Your Studio");
+  glutCreateWindow("Physical light converting");
   
   glutDisplayFunc(display);
   glutReshapeFunc(reshape);
   glutKeyboardFunc(keyboard);
-	glutSpecialFunc(special);
-	glutMouseFunc(MyMouseClick);
-	glutMotionFunc(MyMouseMove);
+  glutSpecialFunc(special);
+  glutMouseFunc(MyMouseClick);
+  glutMotionFunc(MyMouseMove);
 
-	glutPostRedisplay();
-	if (glewInit() != GLEW_OK) 
-	{
-		std::cerr << "failed to initialize glew" << std::endl;
-		return -1;
-	}
+  glutPostRedisplay();
+  if (glewInit() != GLEW_OK) 
+  {
+     	std::cerr << "failed to initialize glew" << std::endl;
+     	return -1;
+  }
   	
   init();
   
@@ -108,15 +106,13 @@ int main(int argc, char* argv[])
 
 void settingObject()
 {
-	mat_Translation_model = glm::translate(glm::mat4(1.0f), glm::vec3(100,100,-100));
-	mat_PVM = mat_Proj*mat_View*mat_Model*mat_Translation_model;
 	
 }
 void init()
 {
   // g_model.load_simple_obj(g_filename);
 
-  g_model.load_simple_obj("./polygon.obj");
+  g_model.load_simple_obj("./makeCam.obj");
   //g_model.print();
   glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -151,6 +147,7 @@ void init()
 	loc_u_mouse_points = glGetUniformLocation(program, "mouse_points");
 
 	loc_a_color = glGetAttribLocation(program, "a_color");
+	brush_size = glGetUniformLocation(program, "brush_size");
 
 
 }
@@ -173,12 +170,12 @@ void display()
 	mat_Proj  = glm::perspective(g_camera.fovy(), 1.0f, 0.001f, 10000.0f);  	
 	
 
-  settingObject();
+  mat_Translation_model = glm::translate(glm::mat4(1.0f), glm::vec3(100, 100, -100));
+  mat_Rotation_Desk = glm::rotate(glm::mat4(1.0f), 3.1f + rotateValue, glm::vec3(0.0f, 0.0f, 1.0f));
+//  mat_Rotation_Desk = glm::rotate(glm::mat4(1.0f), 3.1f + rotateValue, glm::vec3(0.0f, 0.0f, 1.0f));
 
-  mat_Rotation_Desk = glm::rotate(glm::mat4(1.0f), 3.1f+rotateValue, glm::vec3(0.0f, 0.0f, 1.0f));
-	
-  mat_PVM   = mat_Proj*mat_View*mat_Translation_model*mat_Rotation_Desk;
-	  
+  mat_PVM = mat_Proj*mat_View*mat_Translation_model*mat_Rotation_Desk;
+  
   mat_VM = mat_View*mat_Rotation_Desk;
   float light_pos[3] = { 2.0f + light_x,25.0f + light_y,55.0f + light_z };
 
@@ -198,6 +195,7 @@ void display()
   glUniformMatrix4fv(loc_u_mv_matrix, 1, false,  glm::value_ptr(mat_VM));
   glUniformMatrix3fv(loc_u_normal_matrix, 1, false, glm::value_ptr(normal_matrix));
 
+  glUniform1f(brush_size, loc_brush_size);
   glUniform3f(light_position_handle, light_pos[0], light_pos[1], light_pos[2]);
   glUniform4f(light_ambient_handle,  light_ambient[0], light_ambient[1], light_ambient[2], light_ambient[3]);
   glUniform4f(light_diffuse_handle,  light_diffuse[0], light_diffuse[1], light_diffuse[2], light_diffuse[3] );
@@ -205,20 +203,20 @@ void display()
 
 
   glUniform3f(loc_u_mouse_points, mousePoints.x, mousePoints.y, mousePoints.z);
-  std::cout << mousePoints.x<< " "<<mousePoints.y<< " " <<mousePoints.z << std::endl;
+  //std::cout << mousePoints.x<< " "<<mousePoints.y<< " " <<mousePoints.z << std::endl;
   if(leftClick==true) glUniform1f(loc_u_mouse_click,10.0f );
   else glUniform1f(loc_u_mouse_click, 0.0f);
 
 
   // TODO: 3. Extend Object::draw function to pass variables to the shader program
   
-	glUniformMatrix4fv(loc_u_pvm_matrix, 1, false, glm::value_ptr(mat_PVM));
-	g_model.draw(loc_a_vertex, loc_a_normal, loc_u_material_ambient,
-  	loc_u_material_diffuse, loc_u_material_specular, loc_u_material_shininess,leftClick,mousePoints, loc_a_color, mat_PVM);
+  glUniformMatrix4fv(loc_u_pvm_matrix, 1, false, glm::value_ptr(mat_PVM));
+  g_model.draw(loc_a_vertex, loc_a_normal, loc_u_material_ambient,
+  loc_u_material_diffuse, loc_u_material_specular, loc_u_material_shininess,leftClick,mousePoints, loc_a_color, mat_PVM, loc_brush_size);
 
-	glUseProgram(0);
+  glUseProgram(0);
 
-	Shader::check_gl_error("draw");
+  Shader::check_gl_error("draw");
 
   glutSwapBuffers();
 }
@@ -229,7 +227,7 @@ void reshape(int width, int height)
 }
 
 void keyboard(unsigned char key, int x, int y)
-{  
+{
 	if ('a' == key || 'A' == key)
 	{
 		g_camera.rotate_right(0.1);
@@ -272,6 +270,14 @@ void keyboard(unsigned char key, int x, int y)
 		light_z -= 1.0f;
 		// std::cout<<light_x<<" "<<light_y<<" "<<light_z<<std::endl;
 	}
+	else if ('=' == key || '+' == key)
+	{
+		loc_brush_size += 0.01f;
+	}
+	else if ('-' == key || '_'==key)
+	{
+		loc_brush_size -= 0.01f;
+	}
 
   glutPostRedisplay();
 }
@@ -306,29 +312,26 @@ void MyMouseClick(GLint Button, GLint State, GLint X, GLint Y)
 	GLfloat SelectX = X / 640.0;
 	GLfloat SelectY = (640 - Y) / 640.0;
 
-	if (Button == 0) {
+	if (Button == 0) { //leftClick
 
 		leftClick = true;
 		mousePoints = GetOGLPos(X, Y);
-		//std::cout << mousePoints.x << " " << mousePoints.y << " " << mousePoints.z << std::endl;
-
-		//draw(현재선택된 폴리곤, 바꿔야할 색상,사이즈)
-
+		
 	}
 	else
 	{
 		leftClick = false;
 		if (State == GLUT_UP) {
-			if (Button == 3)
+			if (Button == 3) //whill up
 			{
-				g_camera.move_forward(20.0f);
+				g_camera.move_forward(10.0f);
 				identify = true;
 				glutPostRedisplay();
 			}
 
 
-			else if (Button == 4) {
-				g_camera.move_backward(20.0f);
+			else if (Button == 4) { //whill down
+				g_camera.move_backward(10.0f);
 				identify = true;
 				glutPostRedisplay();
 			}
